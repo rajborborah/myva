@@ -1,40 +1,55 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+from gtts import gTTS
+import openai
+import os
+import tempfile
 
-"""
-# Welcome to Streamlit!
+# Set up your OpenAI API key
+openai.api_key = "your_openai_api_key"
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+def generate_response(prompt):
+    """Generate response using OpenAI's GPT."""
+    try:
+        response = openai.Completion.create(
+          engine="davinci",  # or another engine as needed
+          prompt=prompt,
+          temperature=0.7,
+          max_tokens=150
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        st.error("Failed to generate response from OpenAI.")
+        return f"An error occurred: {str(e)}"
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+def text_to_speech(text, lang='en'):
+    """Convert text to speech."""
+    tts = gTTS(text=text, lang=lang)
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+        tts.save(fp.name)
+        return fp.name
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+def main():
+    st.title("Virtual Assistant with Voice")
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+    # Using a mockup GIF for dynamic display example
+    st.image("https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif", caption="Dynamic Display")
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+    user_input = st.text_input("How can I assist you today?")
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+    if user_input:
+        # Generate a response using OpenAI's GPT
+        response_text = generate_response(user_input)
+        
+        if response_text:
+            # Display the generated text response
+            st.write(response_text)
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+            # Convert the response to speech and play it
+            audio_file_path = text_to_speech(response_text)
+            st.audio(audio_file_path, format='audio/mp3', start_time=0)
+
+            # Clean up
+            os.remove(audio_file_path)
+
+if __name__ == "__main__":
+    main()
